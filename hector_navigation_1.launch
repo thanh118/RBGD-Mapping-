@@ -1,0 +1,52 @@
+<launch>
+
+  <!-- Volksbot 3 bringup: launch motors/odometry -->
+  <include file="$(find lms1xx)launch/LMS1xx.launch"/>
+  <include file="$(find volksbot_driver)launch/volksbot.launch"/> 
+  
+  
+  <node pkg="tf" type="static_transform_publisher" name="camera" 
+   args="0 0 0 0 0 0 base_link camera_link 100" /> 
+  
+  <node pkg="tf" type="static_transform_publisher" name="laser" 
+   args="0 0 0 0 0 0 base_link laser 100" /> 
+  
+  <!-- teleop -->
+  <node pkg="turtlebot_teleop" type="turtlebot_teleop_key" name="turtlebot_teleop_keyboard" output="screen">
+  <param name="scale_linear" value="0.5" type="double"/><param name="scale_angular" value="1.5" type="double"/>
+  <remap from="turtlebot_teleop_keyboard/cmd_vel" to="cmd_vel"/>
+  </node>
+
+  <arg name="geotiff_map_file_path" default="$(find hector_geotiff)/maps"/>
+
+  <param name="/use_sim_time" value="false"/>
+
+<!--  <node pkg="rviz" type="rviz" name="rviz" -->
+<!--    args="-d $(find hector_slam_launch)/rviz_cfg/mapping_demo.rviz"/> -->
+
+  <include file="$(find hector_mapping)/launch/mapping_default.launch"/>
+
+  <include file="$(find hector_geotiff)/launch/geotiff_mapper.launch">
+    <arg name="trajectory_source_frame_name" value="scanmatcher_frame"/>
+    <arg name="map_file_path" value="$(arg geotiff_map_file_path)"/>
+  </include>
+  <node pkg="tf" type="static_transform_publisher" name="scanmatcher_to_base_footprint" 
+    args="0.0 0.0 0.0 0.0 0.0 0.0 /nav /base_footprint 100" />
+  <!-- ROS navigation stack move_base -->
+  
+     <remap from="odom" to="/nav"/>
+     <remap from="scan" to="/scan"/>
+     <remap from="obstacles_cloud" to="/obstacles_cloud"/>
+     <remap from="ground_cloud" to="/ground_cloud"/>
+     <remap from="map" to="/map"/>
+     <node pkg="move_base" type="move_base" respawn="true" name="move_base" output="screen">
+        <param name="base_global_planner" value="navfn/NavfnROS"/>
+    	<rosparam file="$(find rtabmap_ros)/launch/azimut3/volksbot_config1/costmap_common_params_2d.yaml" command="load" ns="global_costmap"/>
+     	<rosparam file="$(find rtabmap_ros)/launch/azimut3/volksbot_config1/costmap_common_params_2d.yaml" command="load" ns="local_costmap" />
+    	<rosparam file="$(find rtabmap_ros)/launch/azimut3/volksbot_config1/local_costmap_params.yaml" command="load" ns="local_costmap" />
+    	<rosparam file="$(find rtabmap_ros)/launch/azimut3/volksbot_config1/global_costmap_params.yaml" command="load" ns="global_costmap"/>
+    	<rosparam file="$(find rtabmap_ros)/launch/azimut3/volksbot_config1/base_local_planner_params.yaml" command="load" />
+        <rosparam file="$(find rtabmap_ros)/launch/azimut3/volksbot_config1/move_base_params.yaml" command="load" />
+     </node>
+
+</launch>
